@@ -359,10 +359,9 @@ void main()
     int turns;
 
     string page = visit_url( url );
-    if ( page.contains_text( "Plant a Tree, Plant a Tree!" ) ) {
-	// We've been through the choice adventures today.
-	// Are we done?
 
+    void plant_a_tree()
+    {
 	// The sacks of saplings in inventory are available to us to
 	// use. Pick a prize that is consistent with those.
 	load_item_maps();
@@ -382,52 +381,69 @@ void main()
 	turns = saplings_needed - saplings_planted;
     }
 
-    if ( page.contains_text( "choice.php" ) ) {
-	int choice = last_choice();
-	if ( choice == 210 ) {
-	    // Stumped
-	    page = run_choice( 1 );
+    void stumped()
+    {
+	// Stumped
+	page = run_choice( 1 );
 
-	    // Extract items for the page and see what we got.
-	    item_to_int_map map = page.extract_items();
-	    foreach it in map {
-		// We expect at most one item
-		last_prize = it;
-	    }
+	// Extract items for the page and see what we got.
+	item_to_int_map map = page.extract_items();
+	foreach it in map {
+	    // We expect at most one item
+	    last_prize = it;
+	}
 
-	    // The item is now in our inventory. Load the maps that
-	    // tally our current holdings.
-	    load_item_maps();
+	// The item is now in our inventory. Load the maps that
+	// tally our current holdings.
+	load_item_maps();
 
-	    // Visit the Arrrboretum again to get Timbarrr!
+	// Visit the Arrrboretum again to get Timbarrr!
+	page = visit_url( url );
+    }
+
+    void timbarrr()
+    {
+	// Based on configuration and inventory, chooose prize
+	desired_prize = choose_prize( last_prize );
+	turns = desired_prize.saplings_needed();
+
+	// Submit the choice and get the sack of saplings
+	int decision = desired_prize.sapling_option();
+	page = run_choice( decision );
+
+	// Extract items for the page and see what we got.
+	item_to_int_map map = page.extract_items();
+	foreach it in map {
+	    // We expect at most one item
+	    sack = it;
+	}
+    }
+
+    // Run through expected (and unexpected) choice adventures
+    while ( handling_choice() ) {
+	switch ( last_choice() ) {
+	case 210:
+	    stumped();
+	    break;
+	case 209:
+	    timbarrr();
+	    break;
+	default:
+	    // I've seen a June cleaver adventure
+	    page = run_choice( -1 );
+	    // Fetch the next encounter
 	    page = visit_url( url );
-	}
-	// If we have never visited the Arrrboretum before, we are in Timbarrr!
-    }
-
-    if ( page.contains_text( "choice.php" ) ) {
-	int choice = last_choice();
-	if ( choice == 209 ) {
-	    // Based on configuration and inventory, chooose prize
-	    desired_prize = choose_prize( last_prize );
-	    turns = desired_prize.saplings_needed();
-
-	    // Submit the choice and get the sack of saplings
-	    int decision = desired_prize.sapling_option();
-	    page = run_choice( decision );
-
-	    // Extract items for the page and see what we got.
-	    item_to_int_map map = page.extract_items();
-	    foreach it in map {
-		// We expect at most one item
-		sack = it;
-	    }
+	    break;
 	}
     }
 
-    if ( page.contains_text( "choice.php" ) ) {
-	abort( "Unexpected choice adventure: " + last_choice() );
-    }   
+    if ( page.contains_text( "Plant a Tree, Plant a Tree!" ) ) {
+	// We've been through the choice adventures and have an
+	// appropriate sack of saplings, but are not carrying it.
+	//
+	// Perhaps we are all done for the day.
+	plant_a_tree();
+    }
 
     // Adventure 2 times to get a potion or 100 times to get an outfit piece
     int available = my_adventures();
